@@ -45,6 +45,11 @@ def _normalize_dt(dt: datetime) -> datetime:
     return dt.astimezone(UTC).replace(microsecond=0)
 
 
+def _dt_to_client(dt: datetime) -> str:
+    """Serialize datetimes for library consumers using ISO 8601 strings."""
+    return _normalize_dt(dt).isoformat()
+
+
 def _parse_dt(value: Any, field: str) -> datetime:
     """Parse API datetime into normalized UTC."""
     return _normalize_dt(_parse_dt_value(value, field))
@@ -64,8 +69,8 @@ class Zone:
     """Parking zone data with a paid block for the current day."""
 
     id: str
-    start_time: datetime
-    end_time: datetime
+    start_time: str
+    end_time: str
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> Zone | None:
@@ -94,8 +99,8 @@ class Zone:
         start_raw, end_raw = min(paid_blocks, key=lambda item: item[0])
         return cls(
             id=zone_code,
-            start_time=_normalize_dt(start_raw),
-            end_time=_normalize_dt(end_raw),
+            start_time=_dt_to_client(start_raw),
+            end_time=_dt_to_client(end_raw),
         )
 
 
@@ -132,8 +137,8 @@ class Reservation:
     id: int
     license_plate: str
     name: str
-    start_time: datetime
-    end_time: datetime
+    start_time: str
+    end_time: str
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> Reservation:
@@ -151,8 +156,12 @@ class Reservation:
                 license_plate.get("DisplayValue"),
                 "reservation.LicensePlate.DisplayValue",
             ),
-            start_time=_parse_dt(data.get("ValidFrom"), "reservation.ValidFrom"),
-            end_time=_parse_dt(data.get("ValidUntil"), "reservation.ValidUntil"),
+            start_time=_dt_to_client(
+                _parse_dt(data.get("ValidFrom"), "reservation.ValidFrom")
+            ),
+            end_time=_dt_to_client(
+                _parse_dt(data.get("ValidUntil"), "reservation.ValidUntil")
+            ),
         )
 
 

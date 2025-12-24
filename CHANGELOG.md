@@ -2,6 +2,12 @@
 
 This project follows Keep a Changelog and Semantic Versioning.
 
+## Unreleased
+
+## 0.3.0
+
+- Changed: `Zone` and `Reservation` timestamp fields are now ISO 8601 strings.
+
 ## 0.2.1
 
 - Fixed: tolerate empty JSON responses from favorite endpoints without raising `ParseError`.

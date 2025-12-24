@@ -120,7 +120,8 @@ async def test_list_reservations_reauth_retry() -> None:
     assert isinstance(reservation, Reservation)
     assert reservation.id == 1844553
     assert reservation.name == "AA11BB"
-    assert reservation.start_time.tzinfo is not None
+    assert reservation.start_time == "2025-12-23T00:47:00+00:00"
+    assert reservation.end_time == "2025-12-23T23:59:00+00:00"
     login_calls = mocked.requests[("POST", URL(f"{BASE_URL}/login"))]
     assert len(login_calls) == 2
 
@@ -213,8 +214,8 @@ async def test_get_zone_paid_block_today() -> None:
 
     assert zone is not None
     assert zone.id == "zone 4"
-    assert zone.start_time == start
-    assert zone.end_time == end
+    assert zone.start_time == start.isoformat()
+    assert zone.end_time == end.isoformat()
 
 
 @pytest.mark.asyncio

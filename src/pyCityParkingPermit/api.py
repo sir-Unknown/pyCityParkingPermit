@@ -306,12 +306,14 @@ def _pick_reservation_from_permit(
     def _matches(reservation: Reservation) -> bool:
         if reservation.license_plate != license_plate_value:
             return False
-        if date_from is not None and reservation.start_time != _normalize_date(
-            date_from
+        if (
+            date_from is not None
+            and reservation.start_time != _normalize_date(date_from).isoformat()
         ):
             return False
-        if date_until is not None and reservation.end_time != _normalize_date(
-            date_until
+        if (
+            date_until is not None
+            and reservation.end_time != _normalize_date(date_until).isoformat()
         ):
             return False
         return True

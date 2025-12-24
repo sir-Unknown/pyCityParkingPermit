@@ -13,7 +13,7 @@ custom integrations and any asyncio project.
 
 - Async-only HTTP calls via `aiohttp`; you own the `ClientSession`.
 - Auth helper handles login and retries on 401/403 with cached defaults.
-- Typed dataclass models return parsed, timezone-aware fields.
+- Typed dataclass models expose ISO 8601 timestamp strings.
 - Reservation and favorite helpers map CityParkingPermit Permit endpoints.
 - Requires the CityParkingPermit `base_url` to target your environment.
 
@@ -109,7 +109,7 @@ print("pyCityParkingPermit", __version__)
 ## API notes
 
 - Datetimes are sent as ISO 8601 strings with seconds precision.
-- Naive datetimes are sent without timezone offsets; incoming timestamps are parsed to aware UTC datetimes.
+- Incoming timestamps are normalized to ISO 8601 UTC strings; `Zone` and `Reservation` timestamp fields are always strings, not `datetime` objects.
 - Session ownership: you always pass your own `aiohttp.ClientSession`; the library never creates or closes sessions.
 
 ## Error handling
