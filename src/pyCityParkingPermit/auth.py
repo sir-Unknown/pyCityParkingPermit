@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
 import logging
 from collections.abc import Mapping
 from functools import lru_cache
@@ -18,6 +17,7 @@ from aiohttp import (
     ClientTimeout,
 )
 
+from ._utils import async_json
 from .exceptions import AuthError, ParkingConnectionError, RateLimitError
 
 _LOGGER = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ class Auth:
                 raise AuthError("Authentication failed")
             if response.status >= 400:
                 raise AuthError("Authentication failed")
-            data = await _async_json(response)
+            data = await async_json(response, on_error=AuthError)
         finally:
             response.release()
 
@@ -190,7 +190,7 @@ class Auth:
                 raise RateLimitError(_parse_retry_after(response.headers))
             if response.status >= 400:
                 raise AuthError("Authentication failed")
-            data = await _async_json(response)
+            data = await async_json(response, on_error=AuthError)
         finally:
             response.release()
 
@@ -262,16 +262,6 @@ def _ensure_list(data: Any, label: str) -> list[Any]:
     if not isinstance(data, list):
         raise AuthError(f"Expected {label} list")
     return data
-
-
-async def _async_json(response: ClientResponse) -> Any:
-    text = await response.text()
-    if not text:
-        return None
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError as err:
-        raise AuthError("Response body is not valid JSON") from err
 
 
 @lru_cache(maxsize=1)

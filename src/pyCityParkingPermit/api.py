@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from aiohttp import ClientResponse
-
+from ._utils import async_json
 from .auth import Auth
 from .exceptions import ParseError
 from .models import Account, Favorite, Reservation, Zone
@@ -36,19 +34,16 @@ class CityParkingPermitAPI:
     async def async_get_account(self) -> Account:
         """Fetch the account summary."""
         permit, permit_media = await self._fetch_permit()
-        self._update_defaults(permit_media)
         return Account.from_mapping(permit_media)
 
     async def async_get_zone(self) -> Zone | None:
         """Return the paid parking block for the current day, if any."""
         permit, permit_media = await self._fetch_permit()
-        self._update_defaults(permit_media)
         return Zone.from_mapping(permit)
 
     async def async_list_reservations(self) -> list[Reservation]:
         """Return all reservations for the current account."""
         permit, permit_media = await self._fetch_permit()
-        self._update_defaults(permit_media)
         items = _ensure_list(
             permit_media.get("ActiveReservations") or [], "reservations"
         )
@@ -73,20 +68,20 @@ class CityParkingPermitAPI:
         )
         actual_date_from = date_from or datetime.now()
         payload = {
+            **self._build_media_payload(type_id, code),
             "DateFrom": _dt_to_api(actual_date_from),
             "LicensePlate": {
                 "Value": license_plate_value,
                 "Name": license_plate_name,
             },
-            "permitMediaTypeID": type_id,
-            "permitMediaCode": code,
         }
         if date_until is not None:
             payload["DateUntil"] = _dt_to_api(date_until)
 
         response = await self._auth.request("POST", "/reservation/create", json=payload)
         try:
-            data = await _async_json(response)
+            response.raise_for_status()
+            data = await async_json(response, on_error=ParseError)
         finally:
             response.release()
 
@@ -110,12 +105,12 @@ class CityParkingPermitAPI:
         )
         payload = {
             "ReservationID": reservation_id,
-            "permitMediaTypeID": type_id,
-            "permitMediaCode": code,
+            **self._build_media_payload(type_id, code),
         }
         response = await self._auth.request("POST", "/reservation/end", json=payload)
         try:
-            data = await _async_json(response)
+            response.raise_for_status()
+            data = await async_json(response, on_error=ParseError)
         finally:
             response.release()
         self._update_defaults_from_response(data)
@@ -127,7 +122,6 @@ class CityParkingPermitAPI:
     async def async_list_favorites(self) -> list[Favorite]:
         """Return all favorites for the current account."""
         permit, permit_media = await self._fetch_permit()
-        self._update_defaults(permit_media)
         items = _ensure_list(permit_media.get("LicensePlates") or [], "favorites")
         return [
             Favorite.from_mapping(_ensure_mapping(item, "favorite")) for item in items
@@ -167,8 +161,7 @@ class CityParkingPermitAPI:
         """Delete a favorite by its license plate."""
         type_id, code = await self._ensure_media_defaults(None, None)
         payload = {
-            "permitMediaTypeID": type_id,
-            "permitMediaCode": code,
+            **self._build_media_payload(type_id, code),
             "licensePlate": license_plate,
             "name": name,
         }
@@ -177,14 +170,15 @@ class CityParkingPermitAPI:
         )
         try:
             response.raise_for_status()
+            data = await async_json(response, on_error=ParseError)
         finally:
             response.release()
+        self._maybe_update_defaults_from_response(data)
 
     async def _upsert_favorite(self, *, name: str | None, license_plate: str) -> None:
         type_id, code = await self._ensure_media_defaults(None, None)
         payload = {
-            "permitMediaTypeID": type_id,
-            "permitMediaCode": code,
+            **self._build_media_payload(type_id, code),
             "licensePlate": {
                 "Value": license_plate,
                 "Name": name,
@@ -196,8 +190,10 @@ class CityParkingPermitAPI:
         )
         try:
             response.raise_for_status()
+            data = await async_json(response, on_error=ParseError)
         finally:
             response.release()
+        self._maybe_update_defaults_from_response(data)
 
     async def _ensure_media_defaults(
         self,
@@ -220,11 +216,14 @@ class CityParkingPermitAPI:
     async def _fetch_permit(self) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
         response = await self._auth.request("POST", "/login/getbase")
         try:
-            data = await _async_json(response)
+            response.raise_for_status()
+            data = await async_json(response, on_error=ParseError)
         finally:
             response.release()
 
-        return _extract_permit_media(data)
+        permit, permit_media = _extract_permit_media(data)
+        self._update_defaults(permit_media)
+        return permit, permit_media
 
     def _update_defaults(self, permit_media: Mapping[str, Any]) -> None:
         try:
@@ -243,6 +242,18 @@ class CityParkingPermitAPI:
         _permit, permit_media = _extract_permit_media(data)
         self._update_defaults(permit_media)
 
+    def _maybe_update_defaults_from_response(self, data: Any) -> None:
+        if data is None:
+            return
+        if not isinstance(data, Mapping):
+            return
+        if "Permit" not in data and "Permits" not in data:
+            return
+        self._update_defaults_from_response(data)
+
+    def _build_media_payload(self, type_id: int, code: str) -> dict[str, Any]:
+        return {"permitMediaTypeID": type_id, "permitMediaCode": code}
+
 
 def _ensure_mapping(data: Any, label: str) -> Mapping[str, Any]:
     """Validate that the response payload is a mapping."""
@@ -256,18 +267,6 @@ def _ensure_list(data: Any, label: str) -> list[Any]:
     if not isinstance(data, list):
         raise ParseError(f"Expected {label} list")
     return data
-
-
-async def _async_json(response: ClientResponse) -> Any:
-    """Decode a JSON response body or return None for empty responses."""
-    response.raise_for_status()
-    text = await response.text()
-    if not text:
-        return None
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError as err:
-        raise ParseError("Response body is not valid JSON") from err
 
 
 def _extract_permit_media(data: Any) -> tuple[Mapping[str, Any], Mapping[str, Any]]:

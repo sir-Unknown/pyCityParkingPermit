@@ -2,6 +2,11 @@
 
 This project follows Keep a Changelog and Semantic Versioning.
 
+## 0.2.1
+
+- Fixed: tolerate empty JSON responses from favorite endpoints without raising `ParseError`.
+- Internal: shared JSON decoding helper to reduce duplication between API and Auth.
+
 ## 0.2.0
 
 - First CityParkingPermit client release (`pyCityParkingPermit`) with async-only Auth and `CityParkingPermitAPI` on aiohttp.
