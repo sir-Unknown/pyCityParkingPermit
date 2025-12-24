@@ -1,0 +1,6 @@
+# Notice
+
+- This project is not affiliated with or endorsed by CityParkingPermit.
+- "CityParkingPermit" is a trademark or registered name of its respective owner.
+- No upstream source code is included in this library; the API schema references
+  publicly observable responses from the CityParkingPermit parking service.

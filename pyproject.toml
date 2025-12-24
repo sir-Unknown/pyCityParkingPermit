@@ -1,0 +1,79 @@
+[build-system]
+requires = ["hatchling>=1.24.2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyCityParkingPermit"
+version = "0.2.0"
+description = "Async client for the CityParkingPermit parking service"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "sir-Unknown" }]
+keywords = ["parking", "cityparkingpermit", "api", "aiohttp"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = [
+  "aiohttp>=3.10.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "aioresponses>=0.7.7",
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.23.0",
+]
+dev = [
+  "build>=1.2.1",
+  "mypy>=1.11.0",
+  "pre-commit>=3.7.0",
+  "ruff==0.14.10",
+  "twine>=5.1.0",
+]
+
+[project.urls]
+Changelog = "https://github.com/sir-Unknown/pyCityParkingPermit/blob/main/CHANGELOG.md"
+Repository = "https://github.com/sir-Unknown/pyCityParkingPermit"
+Issues = "https://github.com/sir-Unknown/pyCityParkingPermit/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyCityParkingPermit"]
+include = ["src/pyCityParkingPermit/py.typed", "LICENSE", "NOTICE"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "README.md", "CHANGELOG.md", "LICENSE", "NOTICE"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_reexport = true
+show_error_codes = true
+files = ["src/pyCityParkingPermit", "tests"]
+mypy_path = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disable_error_code = ["untyped-decorator"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pyCityParkingPermit"]
